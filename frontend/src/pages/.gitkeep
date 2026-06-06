@@ -1,0 +1,5 @@
+# Placeholder for future page components:
+# - FeedPage.tsx       → Live global news feed
+# - EventDetailPage.tsx → Single event view
+# - ChatPage.tsx       → AI assistant interface
+# - AuthPage.tsx       → Login / signup via Supabase
