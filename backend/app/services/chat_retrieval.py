@@ -36,6 +36,19 @@ DIVERSITY_BONUS_NEW_CATEGORY = 10
 DIVERSITY_PENALTY_TITLE_OVERLAP = 18
 DIVERSITY_PENALTY_SAME_CATEGORY = 8
 TITLE_OVERLAP_THRESHOLD = 0.45
+SECTOR_QUERY_PRIORITY_CATEGORIES: dict[str, int] = {
+    "conflict": 28,
+    "geopolitics": 24,
+    "economy": 20,
+    "trade": 18,
+    "energy": 16,
+    "finance": 14,
+    "technology": 12,
+}
+SECTOR_QUERY_FILTERED_CATEGORIES = frozenset(
+    {"hospitality", "environment", "entertainment", "lifestyle"}
+)
+SECTOR_QUERY_MIN_IMPORTANCE = 60
 
 # General "what's important?" questions — rank by intelligence signals, not keywords alone.
 GENERAL_IMPORTANCE_PATTERNS: list[re.Pattern[str]] = [
@@ -321,6 +334,11 @@ def score_row(
         divisor = IMPORTANCE_MODE_DIVISOR if importance_mode else GENERAL_IMPORTANCE_DIVISOR
         result.add("importance_score", importance // divisor)
 
+    if intent.query_type == QueryType.SECTOR:
+        sector_priority = _sector_priority_bonus(row)
+        if sector_priority:
+            result.add("sector_priority", sector_priority)
+
     if importance_mode:
         risk = str(row.get("risk_level") or "").lower()
         risk_boost = RISK_LEVEL_BOOST.get(risk, 0)
@@ -371,6 +389,10 @@ def _title_overlap(row: dict[str, Any], other: dict[str, Any]) -> float:
 
 def _row_category(row: dict[str, Any]) -> str:
     return str(row.get("category") or "unknown").lower()
+
+
+def _sector_priority_bonus(row: dict[str, Any]) -> int:
+    return SECTOR_QUERY_PRIORITY_CATEGORIES.get(_row_category(row), 0)
 
 
 def _asset_field_relevance(row: dict[str, Any], intent: QueryIntent) -> int:
@@ -427,6 +449,15 @@ def _passes_asset_filter(
     if scored.total <= 0:
         return False
 
+    category = _row_category(row)
+    if (
+        intent.query_type in {QueryType.ASSET, QueryType.SECTOR}
+        and category in SECTOR_QUERY_FILTERED_CATEGORIES
+        and _importance_value(row) < SECTOR_QUERY_MIN_IMPORTANCE
+        and not row_has_direct_evidence(row, intent.detected_assets)
+    ):
+        return False
+
     if intent.query_type not in {QueryType.ASSET, QueryType.SECTOR}:
         return True
 
@@ -467,11 +498,13 @@ def _ranking_sort_key(
     scored: RetrievalScore,
     row: dict[str, Any],
     importance_mode: bool,
-) -> tuple[int, int]:
+    intent: QueryIntent,
+) -> tuple[int, int, int]:
     importance = _importance_value(row)
+    sector_priority = _sector_priority_bonus(row) if intent.query_type == QueryType.SECTOR else 0
     if importance_mode:
-        return (scored.total + importance, importance)
-    return (scored.total, importance)
+        return (sector_priority, scored.total + importance, importance)
+    return (sector_priority, scored.total, importance)
 
 
 def retrieve_events(
@@ -492,7 +525,7 @@ def retrieve_events(
         )
         ranked.append((scored, row))
     ranked.sort(
-        key=lambda item: _ranking_sort_key(item[0], item[1], importance_mode),
+        key=lambda item: _ranking_sort_key(item[0], item[1], importance_mode, intent),
         reverse=True,
     )
 
@@ -518,7 +551,8 @@ def retrieve_events(
         selected.append(chosen)
 
     if not selected:
-        selected = [row for _, row in ranked[:max_events]]
+        if intent.query_type not in {QueryType.ASSET, QueryType.SECTOR}:
+            selected = [row for _, row in ranked[:max_events]]
 
     direct_evidence = any(
         row_has_direct_evidence(row, intent.detected_assets) for row in selected

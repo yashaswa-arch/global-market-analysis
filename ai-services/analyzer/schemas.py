@@ -184,7 +184,7 @@ class MarketImpactItem(BaseModel):
     asset: str
     outlook: str
     confidence: float = Field(ge=0, le=100)
-    reason: str = Field(min_length=5, max_length=300)
+    reason: str = Field(min_length=5, max_length=500)
 
     @field_validator("asset")
     @classmethod

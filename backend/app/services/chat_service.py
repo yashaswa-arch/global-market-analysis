@@ -158,6 +158,36 @@ class ChatService:
         retrieval = self._search_relevant_events(normalized_question)
         relevant_rows = retrieval.selected
 
+        logger.warning(
+            "Chat debug: retrieval snapshot",
+            extra={
+                "detected_assets": sorted(retrieval.intent.detected_assets),
+                "retrieved_rows": len(relevant_rows),
+            },
+        )
+
+        for index, row in enumerate(relevant_rows, start=1):
+            event = row.get("events") or {}
+            market_impacts = row.get("market_impacts")
+            market_asset_names = []
+            if isinstance(market_impacts, list):
+                market_asset_names = [
+                    str(impact.get("asset") or "")
+                    for impact in market_impacts
+                    if isinstance(impact, dict)
+                ]
+
+            logger.warning(
+                "Chat debug row %s",
+                index,
+                extra={
+                    "event_id": row.get("id"),
+                    "title": event.get("title"),
+                    "has_market_impacts": isinstance(market_impacts, list) and bool(market_impacts),
+                    "market_impact_assets": market_asset_names,
+                },
+            )
+
         consensus_list = build_asset_consensus(
             relevant_rows, retrieval.intent.detected_assets
         )
