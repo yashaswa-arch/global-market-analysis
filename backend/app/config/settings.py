@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     api_prefix: str = "/api"
 
     cors_origins: Annotated[list[str], NoDecode] = Field(
-        default_factory=lambda: ["http://localhost:5173"]
+        default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"]
     )
 
     supabase_url: str = Field(default="", description="Supabase project URL (SUPABASE_URL)")
@@ -71,6 +71,17 @@ class Settings(BaseSettings):
     def parse_cors_origins(cls, value: str | list[str]) -> list[str]:
         if isinstance(value, str):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return value
+
+    @field_validator("debug", mode="before")
+    @classmethod
+    def parse_debug(cls, value: bool | str) -> bool:
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"release", "production", "prod", "false", "0", "no", "off"}:
+                return False
+            if normalized in {"development", "dev", "debug", "true", "1", "yes", "on"}:
+                return True
         return value
 
     @property
