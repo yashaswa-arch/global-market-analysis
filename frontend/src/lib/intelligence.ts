@@ -143,7 +143,13 @@ export function buildDashboardStats(analyses: Analysis[], totalEvents: number, u
 export function buildCrisisFeedRows(events: Event[], analyses: Analysis[]): CrisisFeedRow[] {
   return events
     .map((event) => {
-      const analysis = findAnalysisForEvent(analyses, event.id);
+      let analysis = (event as any).analysis;
+      if (Array.isArray(analysis)) {
+        analysis = analysis[0];
+      }
+      if (!analysis) {
+        analysis = findAnalysisForEvent(analyses, event.id);
+      }
       return { event, analysis, score: eventPriority(event, analysis) };
     })
     .sort((a, b) => b.score - a.score);

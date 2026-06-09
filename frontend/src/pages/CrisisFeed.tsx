@@ -24,7 +24,12 @@ export function CrisisFeed() {
   }, [rawSearch]);
 
   const [displayLimit, setDisplayLimit] = useState(50);
-  const eventsQuery    = useEvents({ limit: displayLimit, search: debouncedSearch });
+  const eventsQuery    = useEvents({ 
+    limit: displayLimit, 
+    search: debouncedSearch,
+    priority: filterPriority || undefined,
+    risk_level: filterRisk || undefined,
+  });
   const analysisQuery  = useAnalysis({ limit: 150 });
   const generateMutation = useGenerateAnalysis();
 
@@ -46,17 +51,35 @@ export function CrisisFeed() {
   );
 
   const rows = allRows.filter(row => {
-    if (!row.analysis && (row.event.relevance_score ?? 0) < 70) return false;
-    if (filterPriority && row.event.intelligence_priority !== filterPriority) return false;
+    if (!filterPriority && !filterRisk && !debouncedSearch && !row.analysis && (row.event.relevance_score ?? 0) < 70) return false;
+    if (filterPriority) {
+      const p = row.event.intelligence_priority || "MEDIUM";
+      if (p !== filterPriority) return false;
+    }
     if (filterRisk && row.analysis?.risk_level?.toLowerCase() !== filterRisk.toLowerCase()) return false;
-    // Backend RPC `search_events_deep` handles the actual text matching now.
-    // We remove the aggressive client-side text filtering to avoid breaking the UI.
+    
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
+      const matchEvent = 
+        row.event.title?.toLowerCase().includes(q) ||
+        row.event.description?.toLowerCase().includes(q) ||
+        row.event.source?.toLowerCase().includes(q);
+        
+      const matchAnalysis = 
+        row.analysis?.summary?.toLowerCase().includes(q) ||
+        row.analysis?.countries_impacted?.some(c => c.toLowerCase().includes(q)) ||
+        row.analysis?.market_impacts?.some(m => m.asset.toLowerCase().includes(q)) ||
+        row.analysis?.category?.toLowerCase().includes(q);
+
+      if (!matchEvent && !matchAnalysis) return false;
+    }
     return true;
   });
 
   const critical = rows.filter(r => r.event.intelligence_priority === "CRITICAL");
   const high     = rows.filter(r => r.event.intelligence_priority === "HIGH");
   const medium   = rows.filter(r => r.event.intelligence_priority === "MEDIUM" || !r.event.intelligence_priority);
+  const low      = rows.filter(r => r.event.intelligence_priority === "LOW");
 
   const isLoading  = eventsQuery.isLoading || analysisQuery.isLoading;
   const isError    = eventsQuery.isError   || analysisQuery.isError;
@@ -89,12 +112,14 @@ export function CrisisFeed() {
             <option value="CRITICAL">Critical</option>
             <option value="HIGH">High</option>
             <option value="MEDIUM">Medium</option>
+            <option value="LOW">Low</option>
           </select>
           <select className="feed-select" value={filterRisk} onChange={e => setFilterRisk(e.target.value)}>
             <option value="">All Risks</option>
             <option value="critical">Critical Risk</option>
             <option value="high">High Risk</option>
             <option value="medium">Medium Risk</option>
+            <option value="low">Low Risk</option>
           </select>
         </div>
       </div>
@@ -115,6 +140,9 @@ export function CrisisFeed() {
         )}
         {medium.length > 0 && (
           <FeedSection key="medium" title="Active Intelligence" icon={<Zap size={13} />} color="var(--text-1)" rows={medium} onGenerate={handleGenerate} generating={generating} />
+        )}
+        {low.length > 0 && (
+          <FeedSection key="low" title="Standard Intel" icon={<Zap size={13} />} color="var(--muted)" rows={low} onGenerate={handleGenerate} generating={generating} />
         )}
       </AnimatePresence>
 

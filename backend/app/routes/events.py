@@ -15,7 +15,7 @@ async def trigger_news_fetch() -> NewsFetchStats:
 
 @router.get("", response_model=EventsListResponse)
 async def list_events(
-    limit: int = Query(default=20, ge=1, le=100),
+    limit: int = Query(default=20, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     search_query: str | None = Query(default=None, alias="q"),
     country: str | None = Query(default=None),
@@ -27,6 +27,7 @@ async def list_events(
     from_date: str | None = Query(default=None),
     to_date: str | None = Query(default=None),
     category: str | None = Query(default=None),
+    priority: str | None = Query(default=None),
 ) -> EventsListResponse:
     """List latest events with pagination and filters."""
     result = news_service.list_events(
@@ -42,13 +43,14 @@ async def list_events(
         from_date=from_date,
         to_date=to_date,
         category=category,
+        priority=priority,
     )
     return EventsListResponse(**result)
 
 
 @router.get("/unanalyzed", response_model=EventsListResponse)
 async def list_unanalyzed_events(
-    limit: int = Query(default=20, ge=1, le=100),
+    limit: int = Query(default=20, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
 ) -> EventsListResponse:
     """List events waiting for AI analysis (is_analyzed = false)."""

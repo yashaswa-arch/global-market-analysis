@@ -23,7 +23,7 @@ async def generate_analysis(event_id: str):
 
 @router.get("/", response_model=AnalysisListResponse)
 async def list_analysis(
-    limit: int = Query(default=20, ge=1, le=100),
+    limit: int = Query(default=20, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
 ) -> AnalysisListResponse:
     """Return analyzed events with India-focused intelligence fields."""

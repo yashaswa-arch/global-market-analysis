@@ -621,6 +621,7 @@ class NewsService:
         from_date: str | None = None,
         to_date: str | None = None,
         category: str | None = None,
+        priority: str | None = None,
     ) -> dict[str, Any]:
         try:
             if search_query:
@@ -642,6 +643,8 @@ class NewsService:
                     filtered_data = [d for d in filtered_data if d.get("analysis", {}) and country in (d["analysis"].get("countries_impacted") or [])]
                 if asset:
                     filtered_data = [d for d in filtered_data if d.get("analysis", {}) and asset.lower() in str(d["analysis"].get("market_impacts", [])).lower()]
+                if priority:
+                    filtered_data = [d for d in filtered_data if str(d.get("intelligence_priority") or "").lower() == priority.lower()]
                 
                 return {
                     "events": filtered_data,
@@ -650,7 +653,7 @@ class NewsService:
                     "offset": offset,
                 }
 
-            # Standard path
+        # Standard path
             needs_inner = any([country, region, asset, sector, risk_level, category])
             select_str = "*, analysis!inner(*)" if needs_inner else "*, analysis(*)"
             
@@ -673,10 +676,14 @@ class NewsService:
                 query = query.contains("analysis.countries_impacted", [country])
             if asset:
                 query = query.ilike("analysis.market_impacts::text", f"%{asset}%")
-
+            if priority:
+                if priority.upper() == "MEDIUM":
+                    query = query.or_("intelligence_priority.eq.MEDIUM,intelligence_priority.is.null")
+                else:
+                    query = query.eq("intelligence_priority", priority.upper())
             response = (
                 query
-                .gte("relevance_score", 50)  # Never surface sub-threshold events
+                .or_("relevance_score.gte.50,relevance_score.is.null")  # Never surface sub-threshold events but allow nulls
                 .order("relevance_score", desc=True)
                 .order("published_at", desc=True)
                 .range(offset, offset + limit - 1)

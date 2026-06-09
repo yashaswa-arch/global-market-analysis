@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { analysisApi, eventsApi, analyticsApi } from "@/api";
 import type { Analysis, EventWithAnalysis } from "@/types";
 
-export function useEvents(params?: { limit?: number; source?: string; search?: string }) {
+export function useEvents(params?: { limit?: number; source?: string; search?: string; priority?: string; risk_level?: string }) {
   return useQuery({
     queryKey: ["events", params],
     queryFn: () => eventsApi.list(params),

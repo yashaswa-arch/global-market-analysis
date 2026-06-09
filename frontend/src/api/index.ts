@@ -1,7 +1,7 @@
 import apiClient from "./client";
 import type { AnalysisListResponse, ChatAskResponse, EventsListResponse } from "@/types";
 
-const MAX_ANALYSIS_LIMIT = 100;
+const MAX_ANALYSIS_LIMIT = 500;
 
 function normalizeAnalysisParams(params?: { limit?: number; offset?: number }) {
   if (!params) return params;
@@ -12,7 +12,7 @@ function normalizeAnalysisParams(params?: { limit?: number; offset?: number }) {
 }
 
 export const eventsApi = {
-  list: (params?: { limit?: number; offset?: number; source?: string; search?: string }) => {
+  list: (params?: { limit?: number; offset?: number; source?: string; search?: string; priority?: string; risk_level?: string }) => {
     const q = params?.search;
     const req = { ...params, q };
     delete req.search;
