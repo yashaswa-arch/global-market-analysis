@@ -11,3 +11,9 @@ export const supabase = createClient(
   supabaseUrl ?? "http://localhost:54321",
   supabaseAnonKey ?? "placeholder"
 );
+
+export const getAuthRedirectUrl = () => {
+  let url = import.meta.env.VITE_PUBLIC_APP_URL ?? window.location.origin;
+  url = url.replace(/\/$/, "");
+  return `${url}/auth/callback`;
+};

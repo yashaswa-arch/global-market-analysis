@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
-import { BarChart2, AlertTriangle, TrendingUp, Clock } from "lucide-react";
+import { TrendingUp, BarChart2, AlertTriangle, Clock, Globe } from "lucide-react";
 import { Badge, toneForRisk } from "@/components/Badge";
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/Status";
 import { useAnalysis, useEvents, useSourceAnalytics } from "@/hooks/useEvents";
@@ -10,9 +9,10 @@ import { buildDashboardStats, buildCrisisFeedRows } from "@/lib/intelligence";
 import { formatRelativeTime, percent } from "@/utils/formatters";
 import { useQuery } from "@tanstack/react-query";
 import { marketApi } from "@/api";
+import { InteractiveWorldMap } from "@/components/InteractiveWorldMap";
+import { GlobeMap } from "@/components/GlobeMap";
+import { useTheme } from "@/providers/ThemeProvider";
 import "./Dashboard.css";
-
-const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
 const COUNTRY_COORDS: Record<string, [number, number]> = {
   "Russia": [100.0, 60.0], "Ukraine": [31.0, 48.0], "Israel": [34.8, 31.0],
@@ -24,12 +24,6 @@ const COUNTRY_COORDS: Record<string, [number, number]> = {
   "Sudan": [30.0, 15.0], "Myanmar": [96.0, 21.0], "Afghanistan": [65.0, 33.0]
 };
 
-const HOTSPOT_COLOR: Record<string, string> = {
-  critical: "#dc3545",
-  high:     "#e07b35",
-  medium:   "#c9a227",
-};
-
 export function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -37,6 +31,7 @@ export function Dashboard() {
   const analysisQuery  = useAnalysis({ limit: 150 });
   const analyticsQuery = useSourceAnalytics();
   const marketQuery    = useQuery({ queryKey: ["marketLive"], queryFn: () => marketApi.live(), refetchInterval: 60000 });
+  const { theme } = useTheme();
 
   const events   = eventsQuery.data?.events   ?? [];
   const analyses = analysisQuery.data?.analysis ?? [];
@@ -87,7 +82,7 @@ export function Dashboard() {
     return topCountries.map(([name, count]) => {
       const coords = COUNTRY_COORDS[name] || [0, 0];
       const risk = count > 10 ? "critical" : count > 5 ? "high" : "medium";
-      return { name, coordinates: coords as [number, number], risk, detail: `${count} active events` };
+      return { name, coordinates: coords as [number, number], cobeSize: count > 10 ? 0.1 : count > 5 ? 0.07 : 0.04, risk, detail: `${count} active events` };
     }).filter(h => h.coordinates[0] !== 0);
   }, [topCountries]);
 
@@ -114,10 +109,10 @@ export function Dashboard() {
   return (
     <main className="dash-page">
       {/* Ribbon */}
-      <div className="intel-ribbon">
+      <div className="intel-ribbon premium-ribbon">
         <div className="intel-ribbon-label">
           <span className="ribbon-pulse" />
-          BREAKING
+          LIVE INTEL
         </div>
         <div className="intel-ribbon-track">
           <div className="intel-ribbon-inner">
@@ -126,8 +121,9 @@ export function Dashboard() {
                 <span className={`priority-tag ${e.intelligence_priority?.toLowerCase() ?? "medium"}`}>
                   {e.intelligence_priority ?? "MED"}
                 </span>
-                {e.title}
-                <span className="ribbon-sep">◆</span>
+                <span className="ribbon-text">{e.title}</span>
+                <span className="ribbon-time">{formatRelativeTime(e.published_at ?? "")}</span>
+                <span className="ribbon-sep"><TrendingUp size={10} /></span>
               </span>
             ))}
             {ribbonEvents.length === 0 && (
@@ -243,47 +239,23 @@ export function Dashboard() {
             </div>
 
             {/* Risk Map */}
-            <div className="panel risk-map-panel">
+            <div className="panel risk-map-panel" style={{ height: "400px" }}>
               <div className="panel-header">
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <TrendingUp size={13} color="var(--accent)" />
                   <h2>Global Risk Map</h2>
                 </div>
-                <span className="panel-meta">Active hotspots · Click to explore</span>
+                <span className="panel-meta">Active hotspots · Zoom, pan & click</span>
               </div>
-              <div style={{ padding: "0 8px 8px" }}>
-                <ComposableMap
-                  projection="geoNaturalEarth1"
-                  style={{ width: "100%", height: "260px" }}
-                >
-                  <Geographies geography={GEO_URL}>
-                    {({ geographies }: { geographies: Array<{ rsmKey: string; [key: string]: unknown }> }) =>
-                      geographies.map(geo => (
-                        <Geography
-                          key={geo.rsmKey}
-                          geography={geo}
-                          fill="rgba(22,30,44,0.9)"
-                          stroke="rgba(255,255,255,0.06)"
-                          strokeWidth={0.4}
-                          style={{ default: { outline: "none" }, hover: { fill: "rgba(200,168,75,0.12)", outline: "none" }, pressed: { outline: "none" } }}
-                        />
-                      ))
-                    }
-                  </Geographies>
-                  {dynamicHotspots.map(spot => (
-                    <Marker key={spot.name} coordinates={spot.coordinates}>
-                      <circle r={spot.risk === "critical" ? 6 : 4} fill={HOTSPOT_COLOR[spot.risk]} fillOpacity={0.9} stroke={HOTSPOT_COLOR[spot.risk]} strokeWidth={1.5} strokeOpacity={0.3} />
-                      <circle r={spot.risk === "critical" ? 12 : 8} fill="none" stroke={HOTSPOT_COLOR[spot.risk]} strokeWidth={0.8} strokeOpacity={0.2} />
-                      <text y={-11} textAnchor="middle" style={{ fontFamily: "Inter,sans-serif", fontSize: "8px", fill: HOTSPOT_COLOR[spot.risk], fontWeight: 600 }}>
-                        {spot.name}
-                      </text>
-                    </Marker>
-                  ))}
-                </ComposableMap>
-                <div className="map-legend">
-                  <span className="map-legend-item critical">● CRITICAL</span>
-                  <span className="map-legend-item high">● HIGH</span>
-                  <span className="map-legend-item medium">● ELEVATED</span>
+              <div style={{ position: "relative", width: "100%", height: "calc(100% - 40px)", overflow: "hidden" }}>
+                <InteractiveWorldMap 
+                  hotspots={dynamicHotspots.map(h => ({ name: h.name, coordinates: h.coordinates, risk: h.risk, detail: h.detail, count: h.cobeSize * 100 }))} 
+                  onCountryClick={(country) => setSearchQuery(country)}
+                />
+                <div className="map-legend" style={{ position: "absolute", bottom: "10px", right: "10px", display: "flex", gap: "10px", fontSize: "0.7rem" }}>
+                  <span className="map-legend-item critical" style={{ color: "var(--critical)" }}>● CRITICAL</span>
+                  <span className="map-legend-item high" style={{ color: "var(--high)" }}>● HIGH</span>
+                  <span className="map-legend-item medium" style={{ color: "var(--medium)" }}>● ELEVATED</span>
                 </div>
               </div>
             </div>
@@ -292,6 +264,26 @@ export function Dashboard() {
           {/* Right sidebar */}
           <div className="dash-sidebar">
             
+            {/* Revolving Globe (Dashboard Header/Sidebar Feature) */}
+            <div className="panel" style={{ height: "260px", padding: 0, overflow: "hidden", position: "relative", border: "1px solid var(--line)", background: "var(--surface-1)", marginBottom: "16px" }}>
+              <div style={{ position: "absolute", top: "12px", left: "14px", zIndex: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <Globe size={12} color="var(--accent)" />
+                  <h2 style={{ fontSize: "0.65rem", margin: 0, color: "var(--text)", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Global Threat Intel</h2>
+                </div>
+              </div>
+              <div style={{ width: "100%", height: "100%", position: "absolute", top: "10px" }}>
+                <GlobeMap 
+                  theme={theme === "light" ? "light" : "dark"}
+                  markers={dynamicHotspots.map(h => ({ 
+                    location: h.coordinates, 
+                    size: h.cobeSize, 
+                    color: h.risk === "critical" ? [0.86, 0.2, 0.27] : h.risk === "high" ? [0.87, 0.48, 0.2] : [0.78, 0.63, 0.15] 
+                  }))} 
+                />
+              </div>
+            </div>
+
             {/* Live Markets (NIFTY & GOLD) */}
             <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
               {[nifty, gold].map((asset, idx) => asset && (

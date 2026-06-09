@@ -11,7 +11,7 @@ from groq import AsyncGroq
 logger = logging.getLogger(__name__)
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
-load_dotenv(ROOT_DIR / ".env")
+load_dotenv(ROOT_DIR / "backend" / ".env")
 
 DEFAULT_MODEL = "llama-3.3-70b-versatile"
 

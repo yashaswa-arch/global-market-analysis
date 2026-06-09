@@ -357,9 +357,12 @@ class ChatService:
                     )
 
         except Exception as exc:
+            error_msg = str(exc)
             logger.exception("Failed to fetch analysis for chat context")
+            if "PGRST202" in error_msg and "search_events_deep" in error_msg:
+                raise ValueError("Database schema incomplete: Missing 'search_events_deep' function. Please execute '003_phase9_tables.sql' in your Supabase SQL Editor.")
             raise SupabaseQueryError(
-                f"Failed to fetch analysis for chat: {exc}", table=ANALYSIS_TABLE
+                f"Failed to fetch analysis for chat: {error_msg}", table=ANALYSIS_TABLE
             ) from exc
 
         return retrieval
@@ -481,10 +484,7 @@ class ChatService:
     def _store_conversation(self, user_id: str, question: str, answer: str) -> None:
         try:
             self.db.table(CHAT_HISTORY_TABLE).insert(
-                [
-                    {"user_id": user_id, "role": "user", "message": question},
-                    {"user_id": user_id, "role": "assistant", "message": answer},
-                ]
+                {"user_id": user_id, "question": question, "response": answer}
             ).execute()
             logger.info("Chat conversation stored", extra={"user_id": user_id})
         except Exception as exc:
