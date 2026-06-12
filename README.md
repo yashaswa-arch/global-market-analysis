@@ -1,4 +1,4 @@
-# Global Event Intelligence Platform
+# GLOBINTEL : Global Event Intelligence Platform
 
 A college project that collects global news from RSS feeds and GNews API, stores events in Supabase, enriches them with Groq AI for India-focused impact analysis, and serves them through a FastAPI backend and React frontend (planned).
 
