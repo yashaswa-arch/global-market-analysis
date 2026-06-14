@@ -30,15 +30,20 @@ def log_supabase_startup() -> None:
         return
 
     logger.info("Loaded Supabase URL: %s", settings.supabase_url)
-    logger.info("Supabase key loaded successfully (prefix: %s)", _mask_key(settings.supabase_key))
+    logger.info(
+        "Supabase SERVICE ROLE key loaded (prefix: %s) — backend only, never expose to frontend.",
+        _mask_key(settings.supabase_service_role_key),
+    )
 
 
 @lru_cache
 def get_supabase() -> Client:
     """
-    Return a cached Supabase client.
+    Return a cached Supabase client using the SERVICE ROLE key.
 
-    Uses only SUPABASE_URL and SUPABASE_KEY from environment variables.
+    This client bypasses Row Level Security and has full database access.
+    It should only be used server-side (never pass this client or its key
+    to any frontend code or public API response).
     """
     settings = get_settings()
 
@@ -48,7 +53,7 @@ def get_supabase() -> Client:
         )
 
     try:
-        return create_client(settings.supabase_url, settings.supabase_key)
+        return create_client(settings.supabase_url, settings.supabase_service_role_key)
     except Exception as exc:
         logger.exception("Failed to create Supabase client")
         raise SupabaseConnectionError(f"Failed to create Supabase client: {exc}") from exc

@@ -33,7 +33,16 @@ class Settings(BaseSettings):
     )
 
     supabase_url: str = Field(default="", description="Supabase project URL (SUPABASE_URL)")
-    supabase_key: str = Field(default="", description="Supabase API key (SUPABASE_KEY)")
+    # V-03: Renamed from SUPABASE_KEY to make the key type explicit.
+    # validation_alias accepts the old name so existing .env files keep working.
+    supabase_service_role_key: str = Field(
+        default="",
+        validation_alias="supabase_key",
+        description=(
+            "Supabase SERVICE ROLE key — bypasses RLS, full DB access. "
+            "Backend only. NEVER expose in frontend or commit to git. (SUPABASE_KEY)"
+        ),
+    )
 
     # News collection
     gnews_api_key: str = Field(default="", description="GNews API key (GNEWS_API_KEY)")
@@ -99,7 +108,7 @@ class Settings(BaseSettings):
 
     @property
     def supabase_configured(self) -> bool:
-        return bool(self.supabase_url.strip() and self.supabase_key.strip())
+        return bool(self.supabase_url.strip() and self.supabase_service_role_key.strip())
 
     @property
     def groq_configured(self) -> bool:
