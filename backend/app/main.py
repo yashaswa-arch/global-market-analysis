@@ -4,6 +4,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from app.config.settings import get_settings
 from app.core.exceptions import SupabaseConnectionError, SupabaseQueryError
@@ -13,6 +16,22 @@ from app.routes.database import test_database_connection
 from app.routes.router import api_router
 
 logger = logging.getLogger(__name__)
+
+
+def _rate_limit_key(request: Request) -> str:
+    """Key rate limits by authenticated user id when available, else by remote IP.
+
+    This prevents a single user from exhausting limits across different IPs
+    and avoids punishing other users when one IP is shared (e.g. NAT/proxy).
+    """
+    user = getattr(request.state, "user", None)
+    if isinstance(user, dict) and user.get("id"):
+        return f"user:{user['id']}"
+    return get_remote_address(request)
+
+
+# Global limiter instance — imported by route modules via app.state.limiter
+limiter = Limiter(key_func=_rate_limit_key, default_limits=[])
 
 
 @asynccontextmanager
@@ -26,6 +45,9 @@ async def lifespan(app: FastAPI):
 
 
 def register_exception_handlers(app: FastAPI) -> None:
+    # Rate limit exceeded — return a clean JSON 429
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
     @app.exception_handler(SupabaseConnectionError)
     async def supabase_connection_handler(
         _request: Request, exc: SupabaseConnectionError
@@ -77,6 +99,9 @@ def create_app() -> FastAPI:
 
     register_exception_handlers(app)
     app.include_router(api_router, prefix=settings.api_prefix)
+
+    # Attach rate limiter to app state so route decorators can reference it
+    app.state.limiter = limiter
 
     @app.get("/health", tags=["health"])
     async def health_check() -> dict[str, str]:

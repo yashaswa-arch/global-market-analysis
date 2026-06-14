@@ -89,3 +89,35 @@ async def get_optional_user(
         return await get_current_user(authorization)
     except HTTPException:
         return None
+
+
+async def require_admin(
+    user: AuthUser = Depends(get_current_user),
+) -> AuthUser:
+    """Require the caller to be an authenticated admin user (V-02 fix).
+
+    Admin UUIDs are configured via the ``ADMIN_USER_IDS`` environment variable
+    (comma-separated Supabase user UUIDs).
+
+    Raises
+    ------
+    HTTPException 403
+        If the authenticated user is not in the admin list.
+    HTTPException 503
+        If ``ADMIN_USER_IDS`` is not configured (fail-safe — prevents accidental
+        open access when the env var is missing).
+    """
+    settings = get_settings()
+    if not settings.admin_configured:
+        logger.error(
+            "require_admin: ADMIN_USER_IDS is not set — blocking all admin access. "
+            "Set ADMIN_USER_IDS=<your-supabase-uuid> in .env to enable admin routes."
+        )
+        raise HTTPException(
+            status_code=503,
+            detail="Admin access is not configured. Set ADMIN_USER_IDS in server environment.",
+        )
+    if user["id"] not in settings.admin_user_ids:
+        logger.warning("Admin access denied for user %s", user["id"])
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    return user

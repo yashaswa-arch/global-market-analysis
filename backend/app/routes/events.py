@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query, Request
 
+from app.core.auth import AuthUser, require_admin
+from app.main import limiter
 from app.models.schemas import EventsListResponse, NewsFetchStats
 from app.services.news_service import NewsService
 
@@ -8,8 +10,12 @@ news_service = NewsService()
 
 
 @router.post("/fetch", response_model=NewsFetchStats)
-async def trigger_news_fetch() -> NewsFetchStats:
-    """Manually trigger RSS + GNews collection."""
+@limiter.limit("2/hour")
+async def trigger_news_fetch(
+    request: Request,
+    _admin: AuthUser = Depends(require_admin),
+) -> NewsFetchStats:
+    """Manually trigger RSS + GNews collection. Admin only (V-02 fix)."""
     return await news_service.collect_all()
 
 

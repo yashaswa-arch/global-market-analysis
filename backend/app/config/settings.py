@@ -68,12 +68,22 @@ class Settings(BaseSettings):
         default="",
         description="Default Supabase auth user UUID for chat_history (CHAT_DEFAULT_USER_ID)",
     )
+    enable_chat_dynamic_fetch: bool = Field(
+        default=True,
+        description="Allow chat to trigger external news API calls (ENABLE_CHAT_DYNAMIC_FETCH). Set false in production to prevent denial-of-wallet.",
+    )
 
-    @field_validator("cors_origins", mode="before")
+    # Admin access control (V-02)
+    admin_user_ids: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description="Comma-separated Supabase user UUIDs with admin privileges (ADMIN_USER_IDS)",
+    )
+
+    @field_validator("cors_origins", "admin_user_ids", mode="before")
     @classmethod
-    def parse_cors_origins(cls, value: str | list[str]) -> list[str]:
+    def parse_comma_list(cls, value: str | list[str]) -> list[str]:
         if isinstance(value, str):
-            return [origin.strip() for origin in value.split(",") if origin.strip()]
+            return [item.strip() for item in value.split(",") if item.strip()]
         return value
 
     @field_validator("debug", mode="before")
@@ -94,6 +104,11 @@ class Settings(BaseSettings):
     @property
     def groq_configured(self) -> bool:
         return bool(self.groq_api_key.strip())
+
+    @property
+    def admin_configured(self) -> bool:
+        """True when at least one admin UUID has been configured."""
+        return bool(self.admin_user_ids)
 
 
 def get_settings() -> Settings:

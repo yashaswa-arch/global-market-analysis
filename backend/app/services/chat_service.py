@@ -340,8 +340,10 @@ class ChatService:
                 max_events=self.settings.chat_max_context_events,
             )
 
-            # 3. If we don't have enough selected events and have a top keyword, dynamically fetch from external APIs
-            if len(retrieval.selected) < 3 and sorted_keywords:
+            # 3. Optionally fetch from external APIs when local results are thin (V-10 fix)
+            # Controlled by ENABLE_CHAT_DYNAMIC_FETCH — set false in production
+            # to prevent arbitrary chat queries from triggering paid API calls.
+            if self.settings.enable_chat_dynamic_fetch and len(retrieval.selected) < 3 and sorted_keywords:
                 logger.info(f"Insufficient events for '{sorted_keywords[0]}' after retrieval filter, dynamically fetching news...")
                 news_service = NewsService()
                 inserted = await news_service.fetch_targeted_news(sorted_keywords[0], limit=5)
@@ -355,6 +357,8 @@ class ChatService:
                         keywords,
                         max_events=self.settings.chat_max_context_events,
                     )
+            elif not self.settings.enable_chat_dynamic_fetch and len(retrieval.selected) < 3:
+                logger.info("Dynamic news fetch is disabled (ENABLE_CHAT_DYNAMIC_FETCH=false). Answering from existing DB events only.")
 
         except Exception as exc:
             error_msg = str(exc)
