@@ -889,4 +889,25 @@ ai-services/
 │   └── schemas.py              # Pydantic output model
 └── chatbot/
     └── chatbot.py              # Chat Q&A over event context
+
+
+    ## 🌐 Live Deployment
+
+### Frontend (Vercel)
+https://global-market-analysis-10gpa4oge-yogita15082006s-projects.vercel.app
+
+### Backend (Render)
+https://global-market-analysis-nnub.onrender.com
+
+---
+
+## ⚙️ Tech Stack
+- Frontend: Vite + React
+- Backend: FastAPI (Python)
+- Deployment: Vercel + Render
+
+---
+
+## 🔗 API Base URL
+https://global-market-analysis-nnub.onrender.com
 ```
