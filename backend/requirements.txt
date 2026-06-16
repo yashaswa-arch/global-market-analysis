@@ -10,3 +10,4 @@ apscheduler>=3.10.4
 groq>=0.13.0
 slowapi>=0.1.9
 yfinance>=0.2.40
+cachetools>=5.3.3
