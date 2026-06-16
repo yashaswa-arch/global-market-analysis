@@ -7,7 +7,7 @@ from app.database.supabase_client import get_supabase
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-@router.get("/")
+@router.get("")
 def get_briefings(limit: int = 10, offset: int = 0) -> dict[str, Any]:
     db = get_supabase()
     try:

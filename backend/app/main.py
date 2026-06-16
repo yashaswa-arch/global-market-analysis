@@ -110,6 +110,14 @@ def create_app() -> FastAPI:
     # Attach rate limiter to app state so route decorators can reference it
     app.state.limiter = limiter
 
+    @app.get("/", tags=["system"])
+    async def root() -> dict[str, str]:
+        return {"status": "API is online", "service": "backend"}
+
+    @app.get("/favicon.ico", include_in_schema=False)
+    async def favicon() -> Response:
+        return Response(status_code=204)
+
     @app.get("/health", tags=["health"])
     async def health_check() -> dict[str, str]:
         return {"status": "healthy", "service": "backend"}

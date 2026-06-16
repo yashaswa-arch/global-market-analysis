@@ -31,7 +31,7 @@ async def generate_analysis(
     return await analysis_service.run_analysis_for_event(event_id)
 
 
-@router.get("/", response_model=AnalysisListResponse)
+@router.get("", response_model=AnalysisListResponse)
 async def list_analysis(
     limit: int = Query(default=20, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
