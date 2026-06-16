@@ -110,7 +110,6 @@
 
 /* SHOWCASE */
 .lp-showcase-grid { display:grid; grid-template-columns:1fr 1fr; gap:64px; align-items:center; }
-.lp-showcase-grid--reverse { }
 .lp-showcase-grid--reverse .lp-showcase-text { order:2; }
 .lp-showcase-grid--reverse .lp-showcase-visual { order:1; }
 .lp-check-list { list-style:none; padding:0; margin:0 0 8px; display:flex; flex-direction:column; gap:10px; }
@@ -144,7 +143,6 @@
 .lp-analytics-footer { display:flex; justify-content:space-between; padding:10px 16px; border-top:1px solid var(--line-2); font-size:0.7rem; color:var(--muted-2); font-family:'JetBrains Mono',monospace; }
 
 /* CHAT MOCK */
-.lp-chat-card { }
 .lp-chat-body { padding:16px; display:flex; flex-direction:column; gap:12px; }
 .lp-chat-msg { border-radius:8px; padding:12px 14px; font-size:0.83rem; line-height:1.55; }
 .lp-chat-msg--user { background:rgba(200,168,75,0.1); border:1px solid rgba(200,168,75,0.2); color:var(--text); margin-left:20px; }
