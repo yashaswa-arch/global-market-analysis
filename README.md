@@ -890,7 +890,7 @@ ai-services/
 └── chatbot/
     └── chatbot.py              # Chat Q&A over event context
 
-
+```
     ## 🌐 Live Deployment
 
 ### Frontend (Vercel)
